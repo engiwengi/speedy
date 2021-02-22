@@ -510,34 +510,54 @@ impl< C > Writable< C > for std::time::SystemTime where C: Context {
     }
 }
 
-macro_rules! impl_for_array {
-    ($count:tt) => {
-        impl< C, T > Writable< C > for [T; $count] where C: Context, T: Writable< C > {
-            #[inline]
-            fn write_to< W >( &self, writer: &mut W ) -> Result< (), C::Error > where W: ?Sized + Writer< C > {
-                for item in self {
-                    item.write_to( writer )?;
-                }
-                Ok(())
-            }
+// macro_rules! impl_for_array {
+//     ($count:tt) => {
+//         impl< C, T > Writable< C > for [T; $count] where C: Context, T: Writable< C > {
+//             #[inline]
+//             fn write_to< W >( &self, writer: &mut W ) -> Result< (), C::Error > where W: ?Sized + Writer< C > {
+//                 for item in self {
+//                     item.write_to( writer )?;
+//                 }
+//                 Ok(())
+//             }
 
-            #[inline]
-            fn bytes_needed( &self ) -> Result< usize, C::Error > {
-                let mut size = 0;
-                for item in self {
-                    size += Writable::< C >::bytes_needed( item )?;
-                }
-                Ok( size )
-            }
-        }
+//             #[inline]
+//             fn bytes_needed( &self ) -> Result< usize, C::Error > {
+//                 let mut size = 0;
+//                 for item in self {
+//                     size += Writable::< C >::bytes_needed( item )?;
+//                 }
+//                 Ok( size )
+//             }
+//         }
+//     }
+// }
+
+// impl_for_array!( 1 );
+// impl_for_array!( 2 );
+// impl_for_array!( 3 );
+// impl_for_array!( 4 );
+// impl_for_array!( 5 );
+// impl_for_array!( 6 );
+// impl_for_array!( 7 );
+// impl_for_array!( 8 );
+
+
+impl<C, T, const N: usize> Writable<C> for [T; N]
+where
+    T: Writable<C>,
+    C: Context,
+{
+    fn write_to<W>(&self, writer: &mut W) -> Result<(), C::Error>
+    where
+        W: ?Sized + Writer<C>,
+    {
+        writer.write_slice(self)
+    }
+
+    fn bytes_needed(&self) -> Result<usize, C::Error> {
+        self.iter().try_fold(0usize, |acc, item| {
+            Writable::<C>::bytes_needed(item).map(|bytes| bytes + acc)
+        })
     }
 }
-
-impl_for_array!( 1 );
-impl_for_array!( 2 );
-impl_for_array!( 3 );
-impl_for_array!( 4 );
-impl_for_array!( 5 );
-impl_for_array!( 6 );
-impl_for_array!( 7 );
-impl_for_array!( 8 );
